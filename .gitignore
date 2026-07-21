@@ -1,0 +1,14 @@
+node_modules/
+*.log
+.DS_Store
+._*
+
+# Nothing secret should ever exist in this repository, but a stray env file
+# must never be committable by accident.
+.env
+.env.*
+!.env.example
+
+# Local build/tooling noise
+.cache/
+coverage/
