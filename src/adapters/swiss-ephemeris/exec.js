@@ -40,7 +40,19 @@ export const MAX_OUTPUT_BYTES = 1_000_000;
 // an ephemeris argument. Note that execFileSync does not use a shell, so this
 // is belt-and-braces: it turns a malformed argument into a clear rejection
 // instead of an obscure parse failure downstream.
-const SAFE_ARG = /^-[A-Za-z][A-Za-z0-9_.,:+\-/\\ ]*$/;
+// Path-bearing arguments (-edir) carry a real filesystem path, which may
+// legitimately contain characters the original allow-list omitted. Update 5.0
+// found this the hard way: publishing the engine as the scoped package
+// `@ezmannbuilds/orbit-axis-engine` puts an "@" in the resolved ephemeris path,
+// so every calculation was rejected as malformed. The failure appeared only when
+// the built Vercel artefact was executed — no unit test could have caught it,
+// because the path only becomes scoped once the engine is a package.
+//
+// The set below admits characters that appear in real installation paths
+// (@ for npm scopes, ~ for home directories, % for encoded segments, spaces for
+// macOS paths) while still refusing everything that would matter if a shell were
+// ever introduced: ; | & $ backtick ( ) < > quotes, newlines, and NUL.
+const SAFE_ARG = /^-[A-Za-z][A-Za-z0-9_.,:+@~%\-/\\ ]*$/;
 const MAX_ARG_LENGTH = 4096;
 
 export function assertSafeArgs(args) {

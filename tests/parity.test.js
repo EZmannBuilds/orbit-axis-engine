@@ -170,3 +170,39 @@ test("determinism: the same input twice gives the same object", () => {
   assert.deepEqual(a.houses, b.houses);
   assert.deepEqual(a.aspects, b.aspects);
 });
+
+// ── regression: scoped-package installation paths ───────────────────────────
+// Update 5.0. Publishing the engine as `@ezmannbuilds/orbit-axis-engine` put an
+// "@" into the resolved ephemeris path. The argument allow-list rejected it, so
+// EVERY calculation failed once the engine was installed as a package — while
+// every unit test still passed, because the tests run from a plain checkout
+// where no "@" appears. Only executing the built Vercel artefact revealed it.
+
+test("an ephemeris path inside a scoped npm package is accepted", async () => {
+  const { assertSafeArgs } = await import("../src/adapters/swiss-ephemeris/exec.js");
+  assert.doesNotThrow(() => assertSafeArgs([
+    "-edir/var/task/node_modules/@ezmannbuilds/orbit-axis-engine/ephemeris",
+  ]), "a scoped package path must not be mistaken for a malformed argument");
+});
+
+test("widening the allow-list did not open a shell-injection hole", async () => {
+  const { assertSafeArgs } = await import("../src/adapters/swiss-ephemeris/exec.js");
+  const injections = [
+    "-edir/x;rm -rf /", "-edir/x|cat", "-edir/x$(id)", "-edir/x&y",
+    "-edir/x>out", "-edir/x<in", "-edir/x'y", '-edir/x"y',
+    `-edir/x${String.fromCharCode(10)}y`, `-edir/x${String.fromCharCode(0)}`,
+  ];
+  for (const arg of injections) {
+    assert.throws(() => assertSafeArgs([arg]), `${JSON.stringify(arg)} must still be rejected`);
+  }
+});
+
+test("the resolved ephemeris directory is itself an acceptable argument", async () => {
+  // The end-to-end version of the bug: whatever path resolution produces must
+  // survive validation, wherever the engine happens to be installed.
+  const { assertSafeArgs } = await import("../src/adapters/swiss-ephemeris/exec.js");
+  const { resolveRuntime } = await import("../src/adapters/swiss-ephemeris/paths.js");
+  const rt = resolveRuntime();
+  assert.doesNotThrow(() => assertSafeArgs([`-edir${rt.ephemerisDir}`]),
+    `the real ephemeris path must be a valid argument: ${rt.ephemerisDir}`);
+});

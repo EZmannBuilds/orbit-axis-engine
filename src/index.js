@@ -63,7 +63,10 @@ export {
   EPHEMERIS_VERSION,
   PLANETS,
   SIGNS,
+  SIGN_ABBR,
   offsetToMinutes,
+  localToUT,
+  EphemerisUnavailableError,
 } from "./adapters/swiss-ephemeris/client.js";
 
 // ── domain calculations ─────────────────────────────────────────────────────
@@ -73,7 +76,12 @@ export {
   chartInputHash,
   elementOf,
   modalityOf,
+  normalizePercentages,
   CALCULATION_VERSION,
+  // Instrumentation: lets a host application assert that an unchanged active
+  // chart is not recomputed on every request. Counts calls, never inputs.
+  natalComputeCount,
+  resetNatalComputeCount,
 } from "./domain/natal-chart.js";
 
 export {
