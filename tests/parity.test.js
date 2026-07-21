@@ -206,3 +206,63 @@ test("the resolved ephemeris directory is itself an acceptable argument", async 
   assert.doesNotThrow(() => assertSafeArgs([`-edir${rt.ephemerisDir}`]),
     `the real ephemeris path must be a valid argument: ${rt.ephemerisDir}`);
 });
+
+// ── synastry (new in Update 5.0) ────────────────────────────────────────────
+// Not an extraction: the application had a synastry placeholder in its UI and
+// no calculation behind it. These tests pin the new behaviour so it can be
+// changed deliberately rather than accidentally.
+
+test("synastry finds aspects between two different charts", async () => {
+  const { computeSynastryAspects } = await import("../src/domain/synastry.js");
+  const a = computeNatalChart(PROFILE);
+  const b = computeNatalChart({ ...PROFILE, birth_date: "1986-11-02", birth_time: "07:15" });
+  const aspects = computeSynastryAspects(a, b);
+  assert.ok(aspects.length > 0, "two real charts should share at least one aspect");
+  for (const asp of aspects) {
+    assert.ok(["conjunction", "sextile", "square", "trine", "opposition"].includes(asp.aspect));
+    assert.ok(["easy", "challenging", "intense"].includes(asp.quality));
+    assert.ok(asp.orb >= 0 && asp.orb <= 9, `orb ${asp.orb} should be within the widest allowance`);
+  }
+  // Sorted tightest first.
+  const orbs = aspects.map((x) => x.orb);
+  assert.deepEqual(orbs, [...orbs].sort((x, y) => x - y));
+});
+
+test("synastry compares same-named bodies across charts", async () => {
+  const { computeSynastryAspects } = await import("../src/domain/synastry.js");
+  // Two identical charts: every body is exactly conjunct its counterpart.
+  const a = computeNatalChart(PROFILE);
+  const aspects = computeSynastryAspects(a, a);
+  const sunSun = aspects.find((x) => x.personA === "Sun" && x.personB === "Sun");
+  assert.ok(sunSun, "A's Sun to B's Sun is a real synastry contact and must be reported");
+  assert.equal(sunSun.aspect, "conjunction");
+  assert.equal(sunSun.orb, 0);
+});
+
+test("synastry is deterministic and order-sensitive in the documented way", async () => {
+  const { computeSynastryAspects } = await import("../src/domain/synastry.js");
+  const a = computeNatalChart(PROFILE);
+  const b = computeNatalChart({ ...PROFILE, birth_date: "1986-11-02", birth_time: "07:15" });
+  assert.deepEqual(computeSynastryAspects(a, b), computeSynastryAspects(a, b), "must be deterministic");
+  // Swapping charts swaps the roles, so personA/personB invert.
+  const swapped = computeSynastryAspects(b, a);
+  assert.equal(swapped.length, computeSynastryAspects(a, b).length);
+});
+
+test("synastry summary counts without claiming compatibility", async () => {
+  const { computeSynastryAspects, summariseSynastry } = await import("../src/domain/synastry.js");
+  const a = computeNatalChart(PROFILE);
+  const b = computeNatalChart({ ...PROFILE, birth_date: "1986-11-02", birth_time: "07:15" });
+  const s = summariseSynastry(computeSynastryAspects(a, b));
+  assert.equal(s.total, s.easy + s.challenging + s.intense, "every aspect is counted exactly once");
+  assert.ok(s.tightest, "a summary should name the tightest contact");
+  // Deliberately absent: any score, percentage, or verdict.
+  assert.ok(!("score" in s) && !("compatibility" in s) && !("rating" in s),
+    "the engine must not score compatibility — that is interpretation, not astronomy");
+});
+
+test("synastry tolerates a chart with missing planets", async () => {
+  const { computeSynastryAspects } = await import("../src/domain/synastry.js");
+  assert.deepEqual(computeSynastryAspects({ planets: {} }, computeNatalChart(PROFILE)), []);
+  assert.deepEqual(computeSynastryAspects(null, null), []);
+});
