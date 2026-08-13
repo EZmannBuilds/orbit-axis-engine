@@ -8,6 +8,29 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Before 1.0.0, minor versions may contain breaking changes. The response
 `contractVersion` is versioned separately and independently.
 
+## [0.2.0] — 2026-08-13
+
+### Added
+
+- `nextStations(date?, { bodies, horizonDays })` — the next retrograde or
+  direct station per planet, located by bisecting real ephemeris speed
+  sign-changes, sorted chronologically. Default horizon 800 days (covers the
+  longest inter-station wait, Mars).
+- `nextIngresses(date?, { bodies, horizonDays })` — the next sign ingress per
+  body within the horizon (default 400 days); a retrograde body re-entering
+  the previous sign counts. Slow outer planets beyond the horizon are omitted
+  rather than guessed.
+- `STATION_BODIES`, `INGRESS_BODIES`, `UPCOMING_EVENTS_VERSION` constants;
+  TypeScript declarations and README rows for all of the above.
+- Playground: natal chart wheel (SVG — zodiac band, house cusps, natal
+  planets, tight-orb aspect lines, transit markers on the rim), an
+  "Upcoming — stations & ingresses" card, and a `/api/upcoming` endpoint.
+
+### Fixed
+
+- Playground: element/modality balance meters rendered zero-width fills;
+  oversized request bodies now get a 400 instead of a dropped connection.
+
 ## [0.1.1] — 2026-08-13
 
 ### Added

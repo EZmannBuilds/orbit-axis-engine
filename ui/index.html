@@ -67,8 +67,8 @@
   .error { color: var(--bad); font-size: 13.5px; margin-top: 10px; white-space: pre-wrap; }
   /* meters: single hue; the label carries identity, the bar carries magnitude */
   .meter { display: grid; grid-template-columns: 64px 1fr 44px; align-items: center; gap: 10px; margin: 6px 0; font-size: 13px; }
-  .meter .track { height: 10px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
-  .meter .fill { height: 100%; background: var(--accent); border-radius: 5px 4px 4px 5px; min-width: 2px; }
+  .meter .track { display: block; height: 10px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
+  .meter .fill { display: block; height: 100%; background: var(--accent); border-radius: 5px 4px 4px 5px; min-width: 2px; }
   .meter .val { text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
   footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: 12.5px; }
   .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin: 0 0 14px; }
@@ -124,6 +124,10 @@
     <h3>Positions</h3>
     <table id="sky-table"></table>
   </div>
+  <div class="card" id="upcoming-card" style="margin-top:14px" hidden>
+    <h3>Upcoming — stations &amp; ingresses</h3>
+    <div class="sub" id="upcoming" style="font-size:14px">computing…</div>
+  </div>
   <div class="error" id="sky-error"></div>
 
   <h2>Natal chart</h2>
@@ -157,6 +161,16 @@
   </form>
 
   <div id="natal-out" hidden>
+    <div class="card" style="margin-top:14px; display:flex; justify-content:center;">
+      <div>
+        <svg id="wheel" width="520" height="520" viewBox="0 0 520 520" role="img"
+             aria-label="Natal chart wheel" style="max-width:100%; height:auto; display:block;"></svg>
+        <div class="sub" style="text-align:center; margin-top:6px">
+          Inner lines: natal aspects (gold conjunction · blue soft · red hard).
+          Gold rim markers: the sky at the chosen instant.
+        </div>
+      </div>
+    </div>
     <div class="grid" style="margin-top:14px">
       <div class="card"><h3>Sun</h3><div class="big" id="bt-sun">—</div></div>
       <div class="card"><h3>Moon</h3><div class="big" id="bt-moon">—</div></div>
@@ -224,6 +238,8 @@ async function loadSky() {
   $("sky-error").textContent = "";
   try {
     const { sky, moon, lunar_events } = await api(`/api/sky${instantParam()}`);
+    window.__sky = sky;
+    loadUpcoming();
     $("sky-cards").hidden = false;
     $("sky-table-card").hidden = false;
     $("sun-sign").textContent = sky.sun.sign;
@@ -251,6 +267,118 @@ async function loadSky() {
   } catch (err) {
     $("sky-error").textContent = err.message;
   }
+}
+
+// ── upcoming events ─────────────────────────────────────────────────────────
+async function loadUpcoming() {
+  $("upcoming-card").hidden = false;
+  $("upcoming").textContent = "computing…";
+  try {
+    const { stations, ingresses } = await api(`/api/upcoming${instantParam()}`);
+    const events = [
+      ...stations.map((s) => ({
+        when: s.instant_utc,
+        text: `${s.body} stations ${s.kind === "station_retrograde" ? "retrograde" : "direct"} at ${s.degrees}°${String(s.minutes).padStart(2, "0")}′ ${s.sign}`,
+      })),
+      ...ingresses.filter((i) => i.body !== "Moon").map((i) => ({
+        when: i.instant_utc,
+        text: `${i.body} ${i.retrograde ? "retrogrades back into" : "enters"} ${i.to_sign}`,
+      })),
+    ].sort((a, b) => a.when.localeCompare(b.when)).slice(0, 10);
+    const day = (iso) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    $("upcoming").innerHTML = events.map((e) =>
+      `<div><strong class="num">${day(e.when)}</strong> — ${esc(e.text)}</div>`).join("");
+  } catch (err) {
+    $("upcoming").textContent = err.message;
+  }
+}
+
+// ── chart wheel ─────────────────────────────────────────────────────────────
+// U+FE0E forces text presentation — without it several zodiac glyphs render
+// as coloured emoji and ignore SVG fill.
+const T = "\ufe0e";
+const SIGN_GLYPHS = { Aries:"♈"+T,Taurus:"♉"+T,Gemini:"♊"+T,Cancer:"♋"+T,Leo:"♌"+T,Virgo:"♍"+T,Libra:"♎"+T,Scorpio:"♏"+T,Sagittarius:"♐"+T,Capricorn:"♑"+T,Aquarius:"♒"+T,Pisces:"♓"+T };
+const PLANET_GLYPHS = { Sun:"☉",Moon:"☽",Mercury:"☿",Venus:"♀",Mars:"♂",Jupiter:"♃",Saturn:"♄",Uranus:"♅",Neptune:"♆",Pluto:"♇" };
+const SIGN_NAMES = Object.keys(SIGN_GLYPHS);
+const ASPECT_STYLE = {
+  Conjunction: "var(--accent)", Trine: "var(--accent-2)", Sextile: "var(--accent-2)",
+  Square: "var(--bad)", Opposition: "var(--bad)",
+};
+
+function drawWheel(chart, sky) {
+  const C = 260, R = 250;                       // centre, outer radius
+  const rSignIn = R - 34;                       // inner edge of zodiac band
+  const rPlanet = rSignIn - 34;                 // natal planet ring
+  const rAspect = rPlanet - 26;                 // aspect hub radius
+  const rTransit = R + 0;                       // transit markers sit on the rim
+  const asc = chart.angles?.ascendant?.longitude;
+  const ref = Number.isFinite(asc) ? asc : 0;   // Asc on the left; else 0° Aries
+  const pt = (lon, r) => {
+    const a = (180 + (lon - ref)) * Math.PI / 180;
+    return [C + r * Math.cos(a), C - r * Math.sin(a)];
+  };
+  let svg = `<circle cx="${C}" cy="${C}" r="${R}" fill="var(--surface-2)" stroke="var(--line)"/>` +
+            `<circle cx="${C}" cy="${C}" r="${rSignIn}" fill="var(--surface)" stroke="var(--line)"/>` +
+            `<circle cx="${C}" cy="${C}" r="${rAspect}" fill="var(--surface-2)" stroke="var(--line)"/>`;
+  // zodiac band: 12 dividers + glyphs
+  for (let i = 0; i < 12; i += 1) {
+    const [x1, y1] = pt(i * 30, rSignIn), [x2, y2] = pt(i * 30, R);
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="var(--line)"/>`;
+    const [gx, gy] = pt(i * 30 + 15, (R + rSignIn) / 2);
+    svg += `<text x="${gx}" y="${gy}" text-anchor="middle" dominant-baseline="central" font-size="17" fill="var(--ink-2)">${SIGN_GLYPHS[SIGN_NAMES[i]]}</text>`;
+  }
+  // house cusps + numbers (only when the chart has houses)
+  const houses = chart.houses ?? [];
+  if (houses.length === 12) {
+    for (let i = 0; i < 12; i += 1) {
+      const cusp = houses[i].longitude;
+      const [x1, y1] = pt(cusp, rAspect), [x2, y2] = pt(cusp, rSignIn);
+      const axis = i === 0 || i === 3 || i === 6 || i === 9;
+      svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${axis ? "var(--ink-3)" : "var(--line)"}" stroke-width="${axis ? 1.6 : 1}"/>`;
+      const next = houses[(i + 1) % 12].longitude;
+      const span = ((next - cusp) % 360 + 360) % 360;
+      const [nx, ny] = pt(cusp + span / 2, rAspect + 11);
+      svg += `<text x="${nx}" y="${ny}" text-anchor="middle" dominant-baseline="central" font-size="9" fill="var(--ink-3)">${i + 1}</text>`;
+    }
+  }
+  // aspect lines across the hub — tight orbs only, or the hub becomes a web
+  for (const a of (chart.aspects ?? []).filter((x) => x.orb <= 4)) {
+    const A = chart.planets[a.a] ?? (a.a === "Ascendant" ? chart.angles?.ascendant : a.a === "MC" ? chart.angles?.midheaven : null);
+    const B = chart.planets[a.b] ?? (a.b === "Ascendant" ? chart.angles?.ascendant : a.b === "MC" ? chart.angles?.midheaven : null);
+    const colour = ASPECT_STYLE[a.aspect];
+    if (!A || !B || !colour) continue;
+    const [x1, y1] = pt(A.longitude, rAspect), [x2, y2] = pt(B.longitude, rAspect);
+    svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${colour}" stroke-width="1" opacity="0.55"/>`;
+  }
+  // natal planets, nudged apart when crowded
+  const bodies = Object.entries(chart.planets)
+    .map(([name, b]) => ({ name, lon: b.longitude, retro: b.retrograde }))
+    .sort((a, b) => a.lon - b.lon);
+  let prevLon = -99, level = 0;
+  for (const b of bodies) {
+    level = (b.lon - prevLon) < 7 ? level + 1 : 0;
+    prevLon = b.lon;
+    const r = rPlanet - level * 20;
+    const [x, y] = pt(b.lon, r);
+    const [tx1, ty1] = pt(b.lon, rSignIn), [tx2, ty2] = pt(b.lon, rSignIn - 6);
+    svg += `<line x1="${tx1}" y1="${ty1}" x2="${tx2}" y2="${ty2}" stroke="var(--ink-3)"/>` +
+           `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="17" fill="var(--ink)">${PLANET_GLYPHS[b.name] ?? b.name[0]}</text>`;
+    if (b.retro) svg += `<text x="${x + 11}" y="${y + 7}" font-size="8" fill="var(--bad)">℞</text>`;
+  }
+  // transit ring: hollow markers on the rim for the current sky
+  if (sky) {
+    for (const [name, b] of Object.entries(sky.planets)) {
+      const [x, y] = pt(b.longitude, R - 8);
+      svg += `<circle cx="${x}" cy="${y}" r="7" fill="none" stroke="var(--accent)" stroke-width="1.2"/>` +
+             `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="8.5" fill="var(--accent)">${PLANET_GLYPHS[name] ?? name[0]}</text>`;
+    }
+  }
+  // Asc marker
+  if (Number.isFinite(asc)) {
+    const [x, y] = pt(asc, rSignIn - 14);
+    svg += `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="9" fill="var(--ink-2)">ASC</text>`;
+  }
+  $("wheel").innerHTML = svg;
 }
 
 // ── natal + transits ────────────────────────────────────────────────────────
@@ -286,6 +414,7 @@ async function loadNatal(event) {
       }),
     ]);
     $("natal-out").hidden = false;
+    drawWheel(chart, window.__sky);
     const bt = chart.big_three;
     $("bt-sun").textContent = bt.sun ? bt.sun.sign : "—";
     $("bt-moon").textContent = bt.moon ? bt.moon.sign : "—";

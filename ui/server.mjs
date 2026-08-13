@@ -20,6 +20,8 @@ import {
   currentSky,
   moonPhase,
   nextLunarEvents,
+  nextStations,
+  nextIngresses,
   computeNatalChart,
   personalTransits,
 } from "../src/index.js";
@@ -113,6 +115,14 @@ const server = createServer(async (req, res) => {
         sky: currentSky(instant),
         moon: moonPhase(instant),
         lunar_events: nextLunarEvents(instant),
+      });
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/upcoming") {
+      const instant = instantFrom(url);
+      json(res, 200, {
+        stations: nextStations(instant).stations,
+        ingresses: nextIngresses(instant, { horizonDays: 120 }).ingresses,
       });
       return;
     }

@@ -99,6 +99,14 @@ export {
 } from "./domain/transits.js";
 
 export {
+  nextStations,
+  nextIngresses,
+  STATION_BODIES,
+  INGRESS_BODIES,
+  UPCOMING_EVENTS_VERSION,
+} from "./domain/upcoming-events.js";
+
+export {
   computeSynastryAspects,
   summariseSynastry,
   SYNASTRY_ASPECTS,

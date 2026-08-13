@@ -240,6 +240,55 @@ export function skySnapshotHash(sky: SkySnapshot): string;
 export const SKY_VERSION: string;
 export const LUNAR_EVENTS_VERSION: string;
 
+// ── upcoming events ─────────────────────────────────────────────────────────
+
+export interface Station {
+  body: string;
+  kind: "station_retrograde" | "station_direct";
+  instant_utc: string;
+  sign: Sign;
+  degrees: number;
+  minutes: number;
+  longitude: number;
+}
+
+export interface Ingress {
+  body: string;
+  from_sign: Sign;
+  to_sign: Sign;
+  retrograde: boolean;
+  instant_utc: string;
+}
+
+/** Next station per body within the horizon (default 800 days), sorted by time. */
+export function nextStations(
+  date?: Instant,
+  options?: { bodies?: readonly string[]; horizonDays?: number },
+): {
+  events_version: string;
+  calculated_from_utc: string;
+  horizon_days: number;
+  stations: Station[];
+};
+
+/**
+ * Next sign ingress per body within the horizon (default 400 days), sorted by
+ * time. Bodies whose next crossing lies beyond the horizon are omitted.
+ */
+export function nextIngresses(
+  date?: Instant,
+  options?: { bodies?: readonly string[]; horizonDays?: number },
+): {
+  events_version: string;
+  calculated_from_utc: string;
+  horizon_days: number;
+  ingresses: Ingress[];
+};
+
+export const STATION_BODIES: readonly string[];
+export const INGRESS_BODIES: readonly string[];
+export const UPCOMING_EVENTS_VERSION: string;
+
 // ── transits ────────────────────────────────────────────────────────────────
 
 export interface Transit {

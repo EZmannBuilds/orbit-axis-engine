@@ -92,6 +92,8 @@ import {
 | `currentSky` | `(date?)` — Date, ISO string, or epoch ms; defaults to now | sky snapshot: sun, moon + phase, retrogrades, tight aspects, `snapshot_hash` |
 | `moonPhase` | `(date?)` **or** `(sunLon, moonLon)` | `{ elongation, phase_name, waxing, waning, illumination_percent }` |
 | `nextLunarEvents` | `(date?)` | next full-moon and new-moon instants (ephemeris crossings, UTC) |
+| `nextStations` | `(date?, { bodies, horizonDays })` | next retrograde/direct station per planet, sorted by time |
+| `nextIngresses` | `(date?, { bodies, horizonDays })` | next sign ingress per body within the horizon (slow planets omitted when beyond it) |
 | `personalTransits` | `(sky, chart, orbLimit = 3)` | transits from moving bodies to natal bodies, tightest first |
 | `computeSynastryAspects` | `(chartA, chartB)` | inter-chart aspects; summarise with `summariseSynastry` |
 | `engineHealth` | `()` | `{ ok, runtime, detail }` — run at startup, refuse to serve on failure |
