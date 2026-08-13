@@ -109,3 +109,20 @@ test("next lunar events reject an invalid instant", () => {
     (error) => error instanceof TypeError && error.code === "invalid_input",
   );
 });
+
+test("current sky rejects an invalid instant with a sky-flavoured error", () => {
+  assert.throws(
+    () => currentSky(new Date("not-a-date")),
+    (error) =>
+      error instanceof TypeError &&
+      error.code === "invalid_input" &&
+      /currentSky/.test(error.message),
+  );
+});
+
+test("current sky accepts an ISO string instant", () => {
+  const fromString = currentSky("2026-07-28T04:30:00.000Z");
+  const fromDate = currentSky(FIXED_INSTANT);
+  assert.equal(fromString.instant_utc, fromDate.instant_utc);
+  assert.equal(fromString.snapshot_hash, fromDate.snapshot_hash);
+});

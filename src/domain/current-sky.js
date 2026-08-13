@@ -62,7 +62,10 @@ export function moonPhase(sunLonOrDate, moonLon) {
 }
 
 export function currentSky(date = new Date()) {
-  const pos = positionsNow(date);
+  // Validate here so a bad instant fails as a sky-snapshot error, not as the
+  // adapter's natal-flavoured "Birth year must be a whole number".
+  const instant = validDate(date, "currentSky");
+  const pos = positionsNow(instant);
   const sun = pos.planets.Sun;
   const moon = pos.planets.Moon;
 
@@ -77,7 +80,7 @@ export function currentSky(date = new Date()) {
 
   const snapshot = {
     sky_version: SKY_VERSION,
-    instant_utc: date.toISOString(),
+    instant_utc: instant.toISOString(),
     zodiac_season: sun.sign,
     sun: { sign: sun.sign, degrees: sun.degrees, minutes: sun.minutes, longitude: sun.longitude },
     moon: {

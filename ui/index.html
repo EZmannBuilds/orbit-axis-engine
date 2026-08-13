@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orbit Axis — local playground</title>
+<style>
+  /* Committed single dark look: this page is served locally by the engine. */
+  :root {
+    --bg: #0b0e1a;
+    --surface: #131a2c;
+    --surface-2: #1a2340;
+    --line: #263054;
+    --ink: #e8ebf5;
+    --ink-2: #9aa3c0;
+    --ink-3: #6b7494;
+    --accent: #d9b36c;      /* gold — headline + meters (single hue, labels carry identity) */
+    --accent-2: #7fa8ff;    /* blue — links + focus */
+    --bad: #e07a6b;
+    --moon-lit: #f2ecd9;
+    --moon-dark: #232b47;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.55 ui-sans-serif, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 1060px; margin: 0 auto; padding: 28px 20px 60px; }
+  a { color: var(--accent-2); }
+  h1 { font-size: 22px; margin: 0; letter-spacing: .3px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .12em; color: var(--ink-2); margin: 34px 0 12px; }
+  header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px 14px; }
+  .badge {
+    font-size: 12px; color: var(--ink-2); border: 1px solid var(--line);
+    border-radius: 999px; padding: 2px 10px; background: var(--surface);
+  }
+  .badge.ok::before { content: "●"; color: #79c893; margin-right: 6px; }
+  .badge.bad::before { content: "●"; color: var(--bad); margin-right: 6px; }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); }
+  .card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 16px 18px; min-width: 0;
+  }
+  .card h3 { margin: 0 0 8px; font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--ink-3); font-weight: 600; }
+  .big { font-size: 26px; font-weight: 650; letter-spacing: .2px; }
+  .sub { color: var(--ink-2); font-size: 13px; }
+  .row { display: flex; align-items: center; gap: 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 12px; border: 1px solid var(--line); background: var(--surface-2); border-radius: 999px; padding: 2px 10px; color: var(--ink-2); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th { text-align: left; color: var(--ink-3); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+  th, td { padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: 0; }
+  .scroll { overflow-x: auto; }
+  .num { font-variant-numeric: tabular-nums; }
+  .r { color: var(--bad); font-size: 12px; margin-left: 4px; }
+  /* controls */
+  label { display: block; font-size: 12px; color: var(--ink-2); margin: 0 0 4px; }
+  input, select, button {
+    font: inherit; color: var(--ink); background: var(--surface-2);
+    border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; width: 100%;
+  }
+  input:focus, select:focus, button:focus { outline: 2px solid var(--accent-2); outline-offset: 1px; }
+  button { cursor: pointer; width: auto; padding: 8px 18px; font-weight: 600; }
+  button.primary { background: var(--accent); color: #17130a; border-color: var(--accent); }
+  form .grid { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .error { color: var(--bad); font-size: 13.5px; margin-top: 10px; white-space: pre-wrap; }
+  /* meters: single hue; the label carries identity, the bar carries magnitude */
+  .meter { display: grid; grid-template-columns: 64px 1fr 44px; align-items: center; gap: 10px; margin: 6px 0; font-size: 13px; }
+  .meter .track { height: 10px; background: var(--surface-2); border-radius: 5px; overflow: hidden; }
+  .meter .fill { height: 100%; background: var(--accent); border-radius: 5px 4px 4px 5px; min-width: 2px; }
+  .meter .val { text-align: right; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: 12.5px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; margin: 0 0 14px; }
+  .controls > div { min-width: 210px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Orbit Axis <span style="color:var(--accent)">playground</span></h1>
+    <span class="badge" id="health">checking engine…</span>
+    <span class="badge">localhost only — nothing stored, nothing sent</span>
+  </header>
+
+  <h2>The sky at an instant</h2>
+  <div class="controls">
+    <div>
+      <label for="instant">Instant (your local time)</label>
+      <input type="datetime-local" id="instant" step="60">
+    </div>
+    <button class="primary" id="btn-sky">Compute</button>
+    <button id="btn-now">Now</button>
+  </div>
+
+  <div class="grid" id="sky-cards" hidden>
+    <div class="card">
+      <h3>Sun</h3>
+      <div class="big" id="sun-sign">—</div>
+      <div class="sub" id="sun-deg"></div>
+    </div>
+    <div class="card">
+      <h3>Moon</h3>
+      <div class="row">
+        <svg id="moon-svg" width="72" height="72" viewBox="0 0 72 72" role="img" aria-label="Moon phase disc"></svg>
+        <div>
+          <div class="big" id="moon-phase">—</div>
+          <div class="sub" id="moon-detail"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>Next lunar events</h3>
+      <div id="lunar-events" class="sub" style="font-size:14px"></div>
+    </div>
+    <div class="card">
+      <h3>Retrograde</h3>
+      <div class="chips" id="retro"></div>
+      <h3 style="margin-top:12px">Tight aspects (≤3°)</h3>
+      <div class="sub" id="sky-aspects"></div>
+    </div>
+  </div>
+  <div class="card scroll" id="sky-table-card" style="margin-top:14px" hidden>
+    <h3>Positions</h3>
+    <table id="sky-table"></table>
+  </div>
+  <div class="error" id="sky-error"></div>
+
+  <h2>Natal chart</h2>
+  <form id="natal-form" class="card" autocomplete="off">
+    <div class="grid">
+      <div><label for="n-date">Birth date</label><input id="n-date" type="date" value="1990-06-15" required></div>
+      <div><label for="n-time">Birth time</label><input id="n-time" type="time" value="12:00"></div>
+      <div>
+        <label for="n-acc">Time accuracy</label>
+        <select id="n-acc">
+          <option value="exact">exact</option>
+          <option value="approximate">approximate</option>
+          <option value="unknown">unknown — no houses/rising</option>
+        </select>
+      </div>
+      <div><label for="n-lat">Latitude</label><input id="n-lat" type="number" step="0.0001" min="-90" max="90" value="40.7128" required></div>
+      <div><label for="n-lon">Longitude</label><input id="n-lon" type="number" step="0.0001" min="-180" max="180" value="-74.0060" required></div>
+      <div><label for="n-off">UTC offset at birth</label><input id="n-off" type="text" placeholder="-05:00" value="-04:00" pattern="[+\-]\d{2}:\d{2}"></div>
+      <div>
+        <label for="n-house">House system</label>
+        <select id="n-house">
+          <option value="placidus">Placidus</option>
+          <option value="whole-sign">Whole sign</option>
+          <option value="koch">Koch</option>
+          <option value="equal">Equal</option>
+        </select>
+      </div>
+      <div style="align-self:end"><button class="primary" type="submit">Compute chart</button></div>
+    </div>
+    <div class="error" id="natal-error"></div>
+  </form>
+
+  <div id="natal-out" hidden>
+    <div class="grid" style="margin-top:14px">
+      <div class="card"><h3>Sun</h3><div class="big" id="bt-sun">—</div></div>
+      <div class="card"><h3>Moon</h3><div class="big" id="bt-moon">—</div></div>
+      <div class="card"><h3>Rising</h3><div class="big" id="bt-rising">—</div><div class="sub" id="bt-note"></div></div>
+      <div class="card">
+        <h3>Element balance</h3><div id="elements"></div>
+        <h3 style="margin-top:10px">Modality</h3><div id="modalities"></div>
+      </div>
+    </div>
+    <div class="card scroll" style="margin-top:14px">
+      <h3>Placements</h3>
+      <table id="natal-table"></table>
+    </div>
+    <div class="card scroll" style="margin-top:14px">
+      <h3>Transits to this chart <span class="sub" id="transit-when"></span></h3>
+      <table id="transit-table"></table>
+      <div class="sub" id="transit-empty" hidden>No transits within orb at this instant.</div>
+    </div>
+  </div>
+
+  <footer>
+    Computed locally by the <a href="/source">Orbit Axis Engine</a> (AGPL-3.0-or-later,
+    Swiss Ephemeris under its AGPL option). This page holds no accounts, stores nothing,
+    and makes no network requests beyond this local server. Astrology output is
+    reflective, not predictive fact.
+  </footer>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const fmtDeg = (b) => `${b.degrees}°${String(b.minutes).padStart(2, "0")}′ ${b.sign}`;
+
+async function api(path, options) {
+  const res = await fetch(path, options);
+  const body = await res.json();
+  if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
+  return body;
+}
+
+// ── moon disc ───────────────────────────────────────────────────────────────
+// Elongation → two-tone disc. Lit side: right while waxing, left while waning.
+function moonDisc(elongation) {
+  const r = 30, cx = 36, cy = 36;
+  const e = ((elongation % 360) + 360) % 360;
+  const waxing = e < 180;
+  const rx = Math.abs(Math.cos(e * Math.PI / 180)) * r;
+  const gibbous = waxing ? e > 90 : e < 270;
+  // Lit path: top → limb arc down the lit side → terminator ellipse back up.
+  const limbSweep = waxing ? 1 : 0;
+  const termSweep = waxing ? (gibbous ? 1 : 0) : (gibbous ? 0 : 1);
+  const lit = `M ${cx} ${cy - r} A ${r} ${r} 0 0 ${limbSweep} ${cx} ${cy + r}` +
+              ` A ${rx.toFixed(2)} ${r} 0 0 ${termSweep} ${cx} ${cy - r} Z`;
+  return `<circle cx="${cx}" cy="${cy}" r="${r}" fill="var(--moon-dark)" stroke="var(--line)"/>` +
+         `<path d="${lit}" fill="var(--moon-lit)"/>`;
+}
+
+// ── sky ─────────────────────────────────────────────────────────────────────
+function instantParam() {
+  const v = $("instant").value;
+  return v ? `?date=${encodeURIComponent(new Date(v).toISOString())}` : "";
+}
+
+async function loadSky() {
+  $("sky-error").textContent = "";
+  try {
+    const { sky, moon, lunar_events } = await api(`/api/sky${instantParam()}`);
+    $("sky-cards").hidden = false;
+    $("sky-table-card").hidden = false;
+    $("sun-sign").textContent = sky.sun.sign;
+    $("sun-deg").textContent = fmtDeg(sky.sun);
+    $("moon-phase").textContent = moon.phase_name;
+    $("moon-detail").textContent =
+      `${fmtDeg(sky.moon)} · ${moon.illumination_percent}% lit · ` +
+      `${moon.waxing ? "waxing" : "waning"} · elongation ${moon.elongation}°`;
+    $("moon-svg").innerHTML = moonDisc(moon.elongation);
+    const when = (iso) => new Date(iso).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    $("lunar-events").innerHTML =
+      `<div>Full moon — <strong>${when(lunar_events.full_moon.instant_utc)}</strong></div>` +
+      `<div>New moon — <strong>${when(lunar_events.new_moon.instant_utc)}</strong></div>`;
+    $("retro").innerHTML = sky.retrogrades.length
+      ? sky.retrogrades.map((p) => `<span class="chip">${esc(p)} ℞</span>`).join("")
+      : `<span class="sub">none</span>`;
+    $("sky-aspects").innerHTML = sky.aspects.length
+      ? sky.aspects.map((a) => `${esc(a.a)} ${esc(a.aspect)} ${esc(a.b)} (${a.orb}°)`).join("<br>")
+      : "none";
+    $("sky-table").innerHTML =
+      `<tr><th>Body</th><th>Position</th><th class="num">Longitude</th></tr>` +
+      Object.entries(sky.planets).map(([name, b]) =>
+        `<tr><td>${esc(name)}${b.retrograde ? '<span class="r">℞</span>' : ""}</td>` +
+        `<td>${fmtDeg(b)}</td><td class="num">${b.longitude.toFixed(2)}°</td></tr>`).join("");
+  } catch (err) {
+    $("sky-error").textContent = err.message;
+  }
+}
+
+// ── natal + transits ────────────────────────────────────────────────────────
+function natalInput() {
+  return {
+    birth_date: $("n-date").value,
+    birth_time: $("n-time").value || undefined,
+    time_accuracy: $("n-acc").value,
+    latitude: Number($("n-lat").value),
+    longitude: Number($("n-lon").value),
+    utc_offset_at_birth: $("n-off").value || undefined,
+    house_system: $("n-house").value,
+  };
+}
+
+function meters(el, percentages) {
+  el.innerHTML = Object.entries(percentages).map(([k, v]) =>
+    `<div class="meter"><span>${esc(k)}</span>` +
+    `<span class="track"><span class="fill" style="width:${Math.max(2, v)}%"></span></span>` +
+    `<span class="val">${v}%</span></div>`).join("");
+}
+
+async function loadNatal(event) {
+  event.preventDefault();
+  $("natal-error").textContent = "";
+  try {
+    const natal = natalInput();
+    const [{ chart }, { transits, instant_utc }] = await Promise.all([
+      api("/api/natal-chart", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(natal) }),
+      api("/api/transits", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ natal, date: $("instant").value ? new Date($("instant").value).toISOString() : undefined }),
+      }),
+    ]);
+    $("natal-out").hidden = false;
+    const bt = chart.big_three;
+    $("bt-sun").textContent = bt.sun ? bt.sun.sign : "—";
+    $("bt-moon").textContent = bt.moon ? bt.moon.sign : "—";
+    $("bt-rising").textContent = bt.rising.unavailable ? "—" : bt.rising.sign;
+    $("bt-note").textContent = bt.rising.unavailable ? bt.rising.reason : (chart.chart_ruler ? `Chart ruler: ${chart.chart_ruler}` : "");
+    meters($("elements"), chart.element_balance.percentages);
+    meters($("modalities"), chart.modality_balance.percentages);
+    $("natal-table").innerHTML =
+      `<tr><th>Body</th><th>Position</th><th>House</th></tr>` +
+      Object.entries(chart.planets).map(([name, b]) =>
+        `<tr><td>${esc(name)}${b.retrograde ? '<span class="r">℞</span>' : ""}</td>` +
+        `<td>${fmtDeg(b)}</td><td>${chart.planet_houses[name] ?? "—"}</td></tr>`).join("");
+    const rows = transits.map((t) =>
+      `<tr><td>${esc(t.transiting)} ${esc(t.aspect)} natal ${esc(t.natal)}</td>` +
+      `<td class="num">${t.orb.toFixed(2)}°</td><td>${t.applying ? "applying" : "separating"}</td>` +
+      `<td>${esc(t.plain)}</td></tr>`).join("");
+    $("transit-table").innerHTML = rows
+      ? `<tr><th>Transit</th><th class="num">Orb</th><th>Motion</th><th>Tone</th></tr>${rows}` : "";
+    $("transit-empty").hidden = !!rows;
+    $("transit-when").textContent = `· at ${new Date(instant_utc).toLocaleString()}`;
+  } catch (err) {
+    $("natal-error").textContent = err.message;
+  }
+}
+
+// ── boot ────────────────────────────────────────────────────────────────────
+function setNow() {
+  const now = new Date();
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+  $("instant").value = now.toISOString().slice(0, 16);
+}
+$("btn-sky").addEventListener("click", loadSky);
+$("btn-now").addEventListener("click", () => { setNow(); loadSky(); });
+$("natal-form").addEventListener("submit", loadNatal);
+setNow();
+loadSky();
+api("/api/health").then((h) => {
+  $("health").textContent = `engine ${h.engine_version ?? ""} · ${h.runtime}`;
+  $("health").classList.add(h.ok ? "ok" : "bad");
+}).catch(() => {
+  $("health").textContent = "engine unreachable";
+  $("health").classList.add("bad");
+});
+</script>
+</body>
+</html>

@@ -74,6 +74,46 @@ Pin to a tag or commit. Do not depend on a moving branch in production.
 
 No build step. No dependencies. Node 22.x.
 
+## API
+
+TypeScript declarations ship with the package (`src/index.d.ts`). The main
+surface, all importable from the package root:
+
+```js
+import {
+  computeNatalChart, currentSky, moonPhase, nextLunarEvents,
+  personalTransits, computeSynastryAspects, engineHealth,
+} from "@ezmannbuilds/orbit-axis-engine";
+```
+
+| Export | Signature | Returns |
+|---|---|---|
+| `computeNatalChart` | `(input)` — `birth_date` "YYYY-MM-DD", `birth_time` "HH:MM", `time_accuracy`, `latitude`, `longitude`, `utc_offset_at_birth` "-05:00", `house_system` | planets, houses, angles, aspects, big three, element/modality balance |
+| `currentSky` | `(date?)` — Date, ISO string, or epoch ms; defaults to now | sky snapshot: sun, moon + phase, retrogrades, tight aspects, `snapshot_hash` |
+| `moonPhase` | `(date?)` **or** `(sunLon, moonLon)` | `{ elongation, phase_name, waxing, waning, illumination_percent }` |
+| `nextLunarEvents` | `(date?)` | next full-moon and new-moon instants (ephemeris crossings, UTC) |
+| `personalTransits` | `(sky, chart, orbLimit = 3)` | transits from moving bodies to natal bodies, tightest first |
+| `computeSynastryAspects` | `(chartA, chartB)` | inter-chart aspects; summarise with `summariseSynastry` |
+| `engineHealth` | `()` | `{ ok, runtime, detail }` — run at startup, refuse to serve on failure |
+
+Calls that take an instant accept anything `new Date(value)` accepts — which
+means a **lone number is epoch milliseconds**, never a longitude. Invalid
+instants and non-finite longitudes throw `TypeError` with
+`code: "invalid_input"` instead of returning NaN-shaped output.
+
+Lower-level exports (raw ephemeris access, runtime diagnostics, hashing,
+version constants) are documented in the declaration file.
+
+## Try it locally
+
+```bash
+npm run ui
+```
+
+Serves a dependency-free playground at `http://localhost:4747` — current sky,
+moon phase, natal chart form, transits, and lunar events, all computed by this
+engine on your machine. Nothing leaves localhost.
+
 ## Supported platforms
 
 | Runtime | Linkage | Purpose |

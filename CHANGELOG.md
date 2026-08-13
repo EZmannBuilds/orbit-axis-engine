@@ -8,7 +8,16 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Before 1.0.0, minor versions may contain breaking changes. The response
 `contractVersion` is versioned separately and independently.
 
-## [Unreleased]
+## [0.1.1] — 2026-08-13
+
+### Added
+
+- `README` API section documenting the public surface.
+- TypeScript declarations (`src/index.d.ts`), wired through `types` and the
+  `exports` map.
+- `npm run ui` — a zero-dependency local playground (`ui/`) serving current
+  sky, moon phase, natal chart, transits, and lunar events on
+  `http://localhost:4747`. Localhost only; nothing is stored or sent anywhere.
 
 ### Fixed
 
@@ -19,6 +28,10 @@ Before 1.0.0, minor versions may contain breaking changes. The response
 - `moonPhase` throws a `TypeError` with `code: "invalid_input"` on an invalid
   instant or non-finite longitudes instead of returning NaN-poisoned flags,
   matching the `nextLunarEvents` convention.
+- `currentSky` validates its instant up front: an invalid date now throws
+  `TypeError` `code: "invalid_input"` naming `currentSky`, instead of leaking
+  the adapter's "Birth year must be a whole number". ISO-string instants are
+  accepted, matching `moonPhase` and `nextLunarEvents`.
 
 ## [0.1.0] — 2026-07-20
 
