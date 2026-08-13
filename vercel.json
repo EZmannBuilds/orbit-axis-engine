@@ -10,6 +10,12 @@
       "excludeFiles": "bin/darwin-arm64/**"
     }
   },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index"
+    }
+  ],
   "redirects": [
     {
       "source": "/source",
