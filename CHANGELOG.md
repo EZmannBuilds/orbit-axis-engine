@@ -8,6 +8,18 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Before 1.0.0, minor versions may contain breaking changes. The response
 `contractVersion` is versioned separately and independently.
 
+## [Unreleased]
+
+### Fixed
+
+- `moonPhase` now accepts a single instant (`moonPhase(date)`, defaulting to
+  now) and derives both longitudes from the ephemeris. Previously a lone Date
+  fell through the two-longitude arithmetic and returned NaN elongation and
+  illumination (serialised as `null`) with `waxing` stuck `false`.
+- `moonPhase` throws a `TypeError` with `code: "invalid_input"` on an invalid
+  instant or non-finite longitudes instead of returning NaN-poisoned flags,
+  matching the `nextLunarEvents` convention.
+
 ## [0.1.0] — 2026-07-20
 
 Initial extraction from the Orbit Axis application (Update 5.0).

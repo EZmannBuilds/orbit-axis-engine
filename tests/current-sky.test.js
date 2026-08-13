@@ -27,6 +27,38 @@ test("waxing and waning follow elongation, including the full-moon phase bucket"
   assert.equal(afterExactFull.waning, true);
 });
 
+test("moonPhase accepts a single instant and matches the two-longitude form", () => {
+  // Regression: 2026-08-12, just past new moon. Calling moonPhase(date) used to
+  // run Date - undefined through the longitude arithmetic, producing NaN
+  // elongation/illumination (null once serialised) with waxing stuck false.
+  const justPastNew = new Date("2026-08-12T18:00:00.000Z");
+  const fromInstant = moonPhase(justPastNew);
+
+  assert.ok(Number.isFinite(fromInstant.elongation));
+  assert.ok(Number.isFinite(fromInstant.illumination_percent));
+  assert.equal(fromInstant.phase_name, "New Moon");
+  assert.equal(fromInstant.waxing, true);
+  assert.equal(fromInstant.waning, false);
+  assert.ok(
+    circularDistance(fromInstant.elongation, 0) < 1,
+    `expected near-zero elongation just past new moon, got ${fromInstant.elongation}°`,
+  );
+
+  const sky = currentSky(justPastNew);
+  assert.deepEqual(
+    fromInstant,
+    moonPhase(sky.sun.longitude, sky.moon.longitude),
+  );
+});
+
+test("moonPhase rejects invalid input instead of returning NaN flags", () => {
+  const isInvalidInput = (error) =>
+    error instanceof TypeError && error.code === "invalid_input";
+  assert.throws(() => moonPhase(new Date("not-a-date")), isInvalidInput);
+  assert.throws(() => moonPhase(Number.NaN, 100), isInvalidInput);
+  assert.throws(() => moonPhase(0, Number.NaN), isInvalidInput);
+});
+
 test("current sky exposes a stable lunar phase fraction from engine positions", () => {
   const sky = currentSky(FIXED_INSTANT);
   assert.ok(sky.moon.phase_fraction >= 0 && sky.moon.phase_fraction < 1);

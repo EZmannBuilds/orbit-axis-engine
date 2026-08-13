@@ -26,7 +26,27 @@ const PHASES = [
 ];
 
 // Sun–Moon elongation (0..360) → phase bucket + illumination fraction.
-export function moonPhase(sunLon, moonLon) {
+//
+// Two call forms:
+//   moonPhase(sunLon, moonLon) — longitudes already in hand (what currentSky uses).
+//   moonPhase(date?)           — one instant; both longitudes come from the
+//                                ephemeris. Defaults to now.
+// A lone Date must not fall through to the longitude arithmetic — that yields
+// NaN, which serialises as null while the waxing/waning booleans keep their
+// NaN-comparison defaults. Invalid input fails loudly instead.
+export function moonPhase(sunLonOrDate, moonLon) {
+  let sunLon = sunLonOrDate;
+  if (moonLon === undefined) {
+    const date = validDate(sunLonOrDate ?? new Date(), "moonPhase");
+    const positions = positionsNow(date);
+    sunLon = positions.planets.Sun.longitude;
+    moonLon = positions.planets.Moon.longitude;
+  }
+  if (!Number.isFinite(sunLon) || !Number.isFinite(moonLon)) {
+    const error = new TypeError("moonPhase requires two finite longitudes or one valid instant");
+    error.code = "invalid_input";
+    throw error;
+  }
   const elongation = ((moonLon - sunLon) % 360 + 360) % 360;
   const illumination = (1 - Math.cos((elongation * Math.PI) / 180)) / 2;
   // 8 buckets of 45°, centred so New Moon straddles 0/360.
@@ -99,7 +119,7 @@ export function currentSky(date = new Date()) {
  * }}
  */
 export function nextLunarEvents(date = new Date()) {
-  const start = validDate(date);
+  const start = validDate(date, "nextLunarEvents");
   const startPositions = positionsNow(start);
   const startElongation = elongation(
     startPositions.planets.Sun.longitude,
@@ -120,10 +140,10 @@ export function nextLunarEvents(date = new Date()) {
   };
 }
 
-function validDate(value) {
+function validDate(value, caller) {
   const date = value instanceof Date ? new Date(value.getTime()) : new Date(value);
   if (Number.isNaN(date.getTime())) {
-    const error = new TypeError("nextLunarEvents requires a valid instant");
+    const error = new TypeError(`${caller} requires a valid instant`);
     error.code = "invalid_input";
     throw error;
   }
