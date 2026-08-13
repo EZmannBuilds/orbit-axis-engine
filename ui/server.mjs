@@ -60,7 +60,11 @@ function readBody(req) {
       if (size > MAX_BODY_BYTES) {
         const error = new Error("Request body too large");
         error.code = "invalid_input";
-        req.destroy();
+        // Stop reading but keep the socket alive so the 400 reaches the client;
+        // node closes the connection itself when a request goes unconsumed.
+        req.pause();
+        req.removeAllListeners("data");
+        req.removeAllListeners("end");
         reject(error);
         return;
       }
