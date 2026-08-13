@@ -8,6 +8,17 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Before 1.0.0, minor versions may contain breaking changes. The response
 `contractVersion` is versioned separately and independently.
 
+## [0.2.1] — 2026-08-13
+
+### Changed
+
+- Playground redesigned to a Meta-commerce-style design language: white
+  canvas, Optimistic VF type ramp (with system fallbacks), pill buttons
+  (black primary, outlined secondary), hairline-bordered cards at 16/32px
+  rounding, ink-deep promo strip and upcoming-events card, cobalt reserved
+  for links, focus, and data encoding (meters, wheel aspect lines, transit
+  markers). Engine API unchanged.
+
 ## [0.2.0] — 2026-08-13
 
 ### Added
