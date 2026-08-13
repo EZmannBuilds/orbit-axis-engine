@@ -12,3 +12,5 @@ node_modules/
 # Local build/tooling noise
 .cache/
 coverage/
+.vercel
+.env*
