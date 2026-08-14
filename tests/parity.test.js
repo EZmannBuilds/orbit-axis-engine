@@ -148,10 +148,21 @@ test("current sky matches at a fixed instant, including the snapshot hash", () =
   assert.equal(sky.snapshot_hash, e.snapshotHash, "snapshot hash must be stable across the extraction");
 });
 
+// The scope the pre-extraction application used. The fixture records the
+// transits THAT list produces, so parity is asserted against it explicitly
+// rather than against whatever the current defaults happen to be. Parity is a
+// claim about the numbers being identical, not a freeze on which bodies the
+// engine is willing to look at; the defaults have since grown to include the
+// outer planets, Chiron, the nodes, and the angles.
+const LEGACY_SCOPE = {
+  bodies: ["Moon", "Sun", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"],
+  targets: ["Sun", "Moon", "Mercury", "Venus", "Mars", "Jupiter", "Saturn"],
+};
+
 test("transits match, including applying and separating classification", () => {
   const chart = computeNatalChart(PROFILE);
   const sky = currentSky(new Date(FIXTURE.instant));
-  const actual = personalTransits(sky, chart, 3);
+  const actual = personalTransits(sky, chart, 3, LEGACY_SCOPE);
   assert.equal(actual.length, FIXTURE.transits.length, "transit count");
   for (const [i, e] of FIXTURE.transits.entries()) {
     const a = actual[i];

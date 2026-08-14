@@ -62,9 +62,11 @@ export {
   ephemerisCapability,
   EPHEMERIS_VERSION,
   PLANETS,
+  POINTS,
   SIGNS,
   SIGN_ABBR,
   offsetToMinutes,
+  zoneOffsetMinutes,
   localToUT,
   EphemerisUnavailableError,
 } from "./adapters/swiss-ephemeris/client.js";

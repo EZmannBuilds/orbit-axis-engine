@@ -8,6 +8,43 @@ versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Before 1.0.0, minor versions may contain breaking changes. The response
 `contractVersion` is versioned separately and independently.
 
+## [0.3.0] — 2026-08-13
+
+### Added
+
+- **Chiron and Lilith.** Returned under a new `points` object on
+  `positionsAtUT`, `currentSky`, and `computeNatalChart` (with `point_houses`),
+  never inside `planets` — `planets` feeds aspects, element balance, and
+  `skySnapshotHash`, so adding bodies there would have silently changed every
+  existing chart and every daily-fortune seed. Lilith is offered as both the
+  mean apogee (`Lilith`) and the osculating one (`TrueLilith`); they disagree
+  by degrees and charts in the wild are drawn with either. The required
+  `seas_18.se1` was already bundled and verified by `runtime:check`.
+- `zoneOffsetMinutes(ianaZone, localParts)` — the UTC offset a zone was on at a
+  local wall-clock time, historical daylight-saving rules included, via Node's
+  built-in ICU. No new dependency and no bundled tzdata to go stale.
+- `POINTS` constant; declarations and README entries for all of the above.
+
+### Changed
+
+- **`personalTransits` now reaches the outer planets, Chiron, the nodes, and
+  the angles.** Both scope lists previously stopped at Saturn, which made a
+  Pluto conjunction to the Sun, anything touching the Ascendant, and any
+  contact with the nodes not merely absent but uncomputable. Scope is now a
+  fourth argument (`{ bodies, targets }`) so callers can narrow or widen it;
+  Lilith is available as a target but excluded by default, since which apogee a
+  chart means is the caller's decision. The parity suite pins the previous
+  scope explicitly — parity is a claim about the numbers being identical, not a
+  freeze on which bodies the engine will look at.
+- **`computeNatalChart` uses `timezone_name`.** It was previously accepted and
+  hashed but never reached the calculation, so callers had to supply
+  `utc_offset_at_birth` and get the daylight-saving history right themselves —
+  the most common way a chart comes out subtly wrong, since a one-hour error
+  moves every angle by ~15° and nothing in the output looks broken. An explicit
+  offset still takes precedence, so no existing chart moves. Supplying neither
+  now adds a `utc_offset_assumed` warning instead of silently reading the birth
+  time as UT.
+
 ## [0.2.1] — 2026-08-13
 
 ### Changed

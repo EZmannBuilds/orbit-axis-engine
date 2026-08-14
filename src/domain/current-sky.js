@@ -94,6 +94,10 @@ export function currentSky(date = new Date()) {
     retrogrades,
     aspects,
     planets: pos.planets,
+    // Chiron and Lilith travel with the snapshot but stay out of `retrogrades`
+    // and `aspects`, and so out of skySnapshotHash — that hash seeds daily
+    // fortunes, and it must not shift because the engine learned a new body.
+    points: pos.points ?? {},
   };
   snapshot.snapshot_hash = skySnapshotHash(snapshot);
   return snapshot;

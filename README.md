@@ -94,7 +94,8 @@ import {
 | `nextLunarEvents` | `(date?)` | next full-moon and new-moon instants (ephemeris crossings, UTC) |
 | `nextStations` | `(date?, { bodies, horizonDays })` | next retrograde/direct station per planet, sorted by time |
 | `nextIngresses` | `(date?, { bodies, horizonDays })` | next sign ingress per body within the horizon (slow planets omitted when beyond it) |
-| `personalTransits` | `(sky, chart, orbLimit = 3)` | transits from moving bodies to natal bodies, tightest first |
+| `personalTransits` | `(sky, chart, orbLimit = 3, scope?)` | transits from moving bodies to natal bodies, tightest first; reaches the outer planets, Chiron, the nodes, and the angles |
+| `zoneOffsetMinutes` | `(ianaZone, { year, month, day, hour, minute })` | the UTC offset that zone was on at that local time, daylight saving included |
 | `computeSynastryAspects` | `(chartA, chartB)` | inter-chart aspects; summarise with `summariseSynastry` |
 | `engineHealth` | `()` | `{ ok, runtime, detail }` — run at startup, refuse to serve on failure |
 
@@ -102,6 +103,20 @@ Calls that take an instant accept anything `new Date(value)` accepts — which
 means a **lone number is epoch milliseconds**, never a longitude. Invalid
 instants and non-finite longitudes throw `TypeError` with
 `code: "invalid_input"` instead of returning NaN-shaped output.
+
+**Birth time zones.** Give `computeNatalChart` a `timezone_name`
+(`"America/Chicago"`) rather than a hand-written `utc_offset_at_birth`: the
+engine resolves the historical daylight-saving rules for that date itself. A
+one-hour offset error moves every angle by ~15° and produces a chart that looks
+entirely plausible. An explicit offset still wins where both are given, and
+supplying neither adds a `utc_offset_assumed` warning rather than quietly
+reading the birth time as UT.
+
+**Chiron and Lilith** are returned under `points`, never inside `planets` —
+`planets` feeds aspects, element balance, and the sky snapshot hash, so folding
+new bodies in would silently change existing charts and daily-fortune seeds.
+Lilith is offered both ways (`Lilith` is the mean apogee, `TrueLilith` the
+osculating one); they differ by degrees, and charts in the wild use either.
 
 Lower-level exports (raw ephemeris access, runtime diagnostics, hashing,
 version constants) are documented in the declaration file.

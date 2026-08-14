@@ -82,6 +82,8 @@ export function engineHealth(): { ok: boolean; runtime: string; detail: string }
 
 export interface EphemerisPositions {
   planets: Record<string, BodyPosition>;
+  /** Chiron and Lilith (mean + osculating apogee). Never inside `planets`. */
+  points: Record<string, BodyPosition>;
   nodes?: Record<string, BodyPosition>;
   houses: Array<{ house: number; longitude: number; sign: Sign }>;
   ascendant?: BodyPosition | null;
@@ -110,10 +112,21 @@ export function ephemerisCapability(options?: {
 
 export const EPHEMERIS_VERSION: string;
 export const PLANETS: readonly string[];
+export const POINTS: readonly string[];
 export const SIGNS: readonly Sign[];
 export const SIGN_ABBR: Record<string, string>;
 
 export function offsetToMinutes(offset: string | number | null | undefined): number;
+
+/**
+ * Minutes east of UTC that an IANA zone was on at a local wall-clock time.
+ * Throws TypeError (code "invalid_input") for an unknown zone. Ambiguous local
+ * times resolve to the offset in force before the transition.
+ */
+export function zoneOffsetMinutes(
+  timeZone: string,
+  local: { year: number; month: number; day: number; hour?: number; minute?: number },
+): number;
 export function localToUT(input: {
   year: number;
   month: number;
@@ -133,8 +146,13 @@ export interface NatalInput {
   time_accuracy?: "exact" | "approximate" | "unknown";
   latitude: number;
   longitude: number;
-  /** e.g. "-05:00" — the UTC offset in effect at birth */
+  /** e.g. "-05:00". Takes precedence over `timezone_name` when both are given. */
   utc_offset_at_birth?: string | number;
+  /**
+   * IANA zone, e.g. "America/Chicago". Used when no explicit offset is given;
+   * resolves historical daylight-saving rules for the birth date. Preferred
+   * over a hand-written offset, which is where one-hour errors come from.
+   */
   timezone_name?: string;
   zodiac_system?: "tropical";
   house_system?: HouseSystem;
@@ -145,6 +163,9 @@ export interface NatalChart {
   time_known: boolean;
   time_accuracy: string;
   planets: Record<string, BodyPosition>;
+  /** Chiron and Lilith. Outside `planets`, so aspects and balance are unchanged. */
+  points: Record<string, BodyPosition>;
+  point_houses: Record<string, number>;
   nodes: Record<string, BodyPosition>;
   angles: { ascendant: BodyPosition | null; midheaven: BodyPosition | null };
   houses: Array<{ house: number; longitude: number; sign: Sign }>;
@@ -223,6 +244,8 @@ export interface SkySnapshot {
   retrogrades: string[];
   aspects: Aspect[];
   planets: Record<string, BodyPosition>;
+  /** Chiron and Lilith. Excluded from aspects, retrogrades, and snapshot_hash. */
+  points: Record<string, BodyPosition>;
   snapshot_hash: string;
 }
 
@@ -305,10 +328,19 @@ export interface Transit {
   [key: string]: unknown;
 }
 
+/**
+ * Transits from moving bodies to fixed natal bodies, tightest orb first.
+ *
+ * Defaults cover the ten planets plus Chiron as transiting bodies, and those
+ * plus the nodes and the angles as targets. Pass `scope` to narrow or widen —
+ * Lilith is available as a target but not included by default, because the mean
+ * and osculating apogees disagree by degrees.
+ */
 export function personalTransits(
-  sky: { planets?: Record<string, { longitude: number; speed?: number }> },
-  chart: { planets?: Record<string, { longitude: number }> },
+  sky: { planets?: Record<string, BodyPosition>; points?: Record<string, BodyPosition>; nodes?: object; angles?: object },
+  chart: { planets?: Record<string, BodyPosition>; points?: Record<string, BodyPosition>; nodes?: object; angles?: object },
   orbLimit?: number,
+  scope?: { bodies?: readonly string[]; targets?: readonly string[] },
 ): Transit[];
 export const TRANSIT_VERSION: string;
 
