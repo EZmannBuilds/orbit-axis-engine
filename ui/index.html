@@ -219,6 +219,8 @@
         <div class="sub" style="text-align:center; margin-top:6px">
           Inner lines: natal aspects (ink conjunction · cobalt soft · red hard).
           Cobalt rim markers: the sky at the chosen instant.
+          Grey glyphs are points — Chiron ⚷ and Lilith ⚸ — which carry positions
+          but do not enter the aspects or the balance figures.
         </div>
       </div>
     </div>
@@ -315,7 +317,8 @@ async function loadSky() {
       `<tr><th>Body</th><th>Position</th><th class="num">Longitude</th></tr>` +
       Object.entries(sky.planets).map(([name, b]) =>
         `<tr><td>${esc(name)}${b.retrograde ? '<span class="r">℞</span>' : ""}</td>` +
-        `<td>${fmtDeg(b)}</td><td class="num">${b.longitude.toFixed(2)}°</td></tr>`).join("");
+        `<td>${fmtDeg(b)}</td><td class="num">${b.longitude.toFixed(2)}°</td></tr>`).join("") +
+      pointRows(sky.points);
   } catch (err) {
     $("sky-error").textContent = err.message;
   }
@@ -350,7 +353,19 @@ async function loadUpcoming() {
 // as coloured emoji and ignore SVG fill.
 const T = "\ufe0e";
 const SIGN_GLYPHS = { Aries:"♈"+T,Taurus:"♉"+T,Gemini:"♊"+T,Cancer:"♋"+T,Leo:"♌"+T,Virgo:"♍"+T,Libra:"♎"+T,Scorpio:"♏"+T,Sagittarius:"♐"+T,Capricorn:"♑"+T,Aquarius:"♒"+T,Pisces:"♓"+T };
-const PLANET_GLYPHS = { Sun:"☉",Moon:"☽",Mercury:"☿",Venus:"♀",Mars:"♂",Jupiter:"♃",Saturn:"♄",Uranus:"♅",Neptune:"♆",Pluto:"♇" };
+const PLANET_GLYPHS = { Sun:"☉",Moon:"☽",Mercury:"☿",Venus:"♀",Mars:"♂",Jupiter:"♃",Saturn:"♄",Uranus:"♅",Neptune:"♆",Pluto:"♇",
+  Chiron:"⚷", Lilith:"⚸", TrueLilith:"⚸" };
+// Points are drawn and listed in a quieter ink than the planets: they are real
+// positions, but they do not enter the aspects or the balance figures, and the
+// page should not imply they do.
+const POINT_LABELS = { Chiron: "Chiron", Lilith: "Lilith (mean)", TrueLilith: "Lilith (true)" };
+
+function pointRows(points) {
+  return Object.entries(points ?? {}).map(([name, b]) =>
+    `<tr><td style="color:var(--steel)">${esc(POINT_LABELS[name] ?? name)}` +
+    `${b.retrograde ? '<span class="r">℞</span>' : ""}</td>` +
+    `<td>${fmtDeg(b)}</td><td class="num">${b.longitude.toFixed(2)}°</td></tr>`).join("");
+}
 const SIGN_NAMES = Object.keys(SIGN_GLYPHS);
 const ASPECT_STYLE = {
   Conjunction: "var(--ink-deep)", Trine: "var(--primary)", Sextile: "var(--primary)",
@@ -402,10 +417,17 @@ function drawWheel(chart, sky) {
     const [x1, y1] = pt(A.longitude, rAspect), [x2, y2] = pt(B.longitude, rAspect);
     svg += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${colour}" stroke-width="1" opacity="0.55"/>`;
   }
-  // natal planets, nudged apart when crowded
-  const bodies = Object.entries(chart.planets)
-    .map(([name, b]) => ({ name, lon: b.longitude, retro: b.retrograde }))
-    .sort((a, b) => a.lon - b.lon);
+  // Natal planets, nudged apart when crowded. Chiron and true Lilith ride along
+  // in a quieter ink — they are positions, not aspect participants, and the
+  // wheel should not imply otherwise. Mean Lilith is left out: drawing both
+  // apogees a few degrees apart reads as an error rather than as a choice.
+  const bodies = [
+    ...Object.entries(chart.planets).map(([name, b]) =>
+      ({ name, lon: b.longitude, retro: b.retrograde, point: false })),
+    ...Object.entries(chart.points ?? {})
+      .filter(([name]) => name !== "Lilith")
+      .map(([name, b]) => ({ name, lon: b.longitude, retro: b.retrograde, point: true })),
+  ].sort((a, b) => a.lon - b.lon);
   let prevLon = -99, level = 0;
   for (const b of bodies) {
     level = (b.lon - prevLon) < 7 ? level + 1 : 0;
@@ -414,7 +436,9 @@ function drawWheel(chart, sky) {
     const [x, y] = pt(b.lon, r);
     const [tx1, ty1] = pt(b.lon, rSignIn), [tx2, ty2] = pt(b.lon, rSignIn - 6);
     svg += `<line x1="${tx1}" y1="${ty1}" x2="${tx2}" y2="${ty2}" stroke="var(--ink-3)"/>` +
-           `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central" font-size="17" fill="var(--ink)">${PLANET_GLYPHS[b.name] ?? b.name[0]}</text>`;
+           `<text x="${x}" y="${y}" text-anchor="middle" dominant-baseline="central"` +
+           ` font-size="${b.point ? 14 : 17}" fill="${b.point ? "var(--steel)" : "var(--ink)"}">` +
+           `${PLANET_GLYPHS[b.name] ?? b.name[0]}</text>`;
     if (b.retro) svg += `<text x="${x + 11}" y="${y + 7}" font-size="8" fill="var(--bad)">℞</text>`;
   }
   // transit ring: hollow markers on the rim for the current sky
@@ -478,7 +502,11 @@ async function loadNatal(event) {
       `<tr><th>Body</th><th>Position</th><th>House</th></tr>` +
       Object.entries(chart.planets).map(([name, b]) =>
         `<tr><td>${esc(name)}${b.retrograde ? '<span class="r">℞</span>' : ""}</td>` +
-        `<td>${fmtDeg(b)}</td><td>${chart.planet_houses[name] ?? "—"}</td></tr>`).join("");
+        `<td>${fmtDeg(b)}</td><td>${chart.planet_houses[name] ?? "—"}</td></tr>`).join("") +
+      Object.entries(chart.points ?? {}).map(([name, b]) =>
+        `<tr><td style="color:var(--steel)">${esc(POINT_LABELS[name] ?? name)}` +
+        `${b.retrograde ? '<span class="r">℞</span>' : ""}</td>` +
+        `<td>${fmtDeg(b)}</td><td>${chart.point_houses?.[name] ?? "—"}</td></tr>`).join("");
     const rows = transits.map((t) =>
       `<tr><td>${esc(t.transiting)} ${esc(t.aspect)} natal ${esc(t.natal)}</td>` +
       `<td class="num">${t.orb.toFixed(2)}°</td><td>${t.applying ? "applying" : "separating"}</td>` +
